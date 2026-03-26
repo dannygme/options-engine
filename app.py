@@ -204,6 +204,13 @@ table.sim-log-table tr:hover td { background: #1e1e2e; }
 }
 @media (max-width: 767px) {
     div[data-testid="column"]:last-child { display: none !important; }
+    [data-testid="collapsedControl"] button,
+    [data-testid="stSidebarCollapseButton"] button {
+        color: transparent !important;
+        font-size: 0 !important;
+        line-height: 0 !important;
+        overflow: hidden !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -219,6 +226,7 @@ components.html("""
 <script>
 (function() {
     const doc = window.parent.document;
+    let observer;
 
     function getSidebarBtn() {
         return doc.querySelector('[data-testid="stSidebarCollapseButton"] button')
@@ -226,47 +234,34 @@ components.html("""
     }
 
     function hideOriginalBtnText() {
-        const style = doc.getElementById('hamburger-style') || doc.createElement('style');
-        style.id = 'hamburger-style';
-        style.textContent = `
-            [data-testid="collapsedControl"] button,
-            [data-testid="stSidebarCollapseButton"] button {
-                color: transparent !important;
-                font-size: 0 !important;
-            }
-            [data-testid="collapsedControl"] button svg,
-            [data-testid="stSidebarCollapseButton"] button svg {
-                visibility: hidden !important;
-            }
-            [data-testid="collapsedControl"] button::before,
-            [data-testid="collapsedControl"] button span,
-            [data-testid="collapsedControl"] button[data-testid="stIconMaterial"] {
-                visibility: hidden !important;
-                opacity: 0 !important;
-                font-size: 0 !important;
-                width: 0 !important;
-                height: 0 !important;
-                overflow: hidden !important;
-            }
-            @media (max-width: 767px) {
-                [data-testid="collapsedControl"] button,
-                [data-testid="stSidebarCollapseButton"] button {
-                    opacity: 1 !important;
-                    position: fixed !important;
-                    top: 0.75rem !important;
-                    left: 0.75rem !important;
-                    width: 2.2rem !important;
-                    height: 2.2rem !important;
-                    z-index: 999998 !important;
-                    pointer-events: auto !important;
-                    background: transparent !important;
-                    border: none !important;
+        if (observer) observer.disconnect();
+
+        const buttons = doc.querySelectorAll(
+            '[data-testid="collapsedControl"] button, [data-testid="stSidebarCollapseButton"] button'
+        );
+        buttons.forEach(btn => {
+            btn.style.setProperty('color', 'transparent', 'important');
+            btn.style.setProperty('font-size', '0px', 'important');
+            btn.style.setProperty('line-height', '0', 'important');
+            btn.style.setProperty('overflow', 'hidden', 'important');
+            btn.style.setProperty('text-indent', '-9999px', 'important');
+            const walker = doc.createTreeWalker(btn, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            while ((node = walker.nextNode())) {
+                if (node.textContent && node.textContent.trim().length > 0) {
+                    node.textContent = '\u200B';
                 }
             }
-        `;
-        if (!doc.getElementById('hamburger-style')) {
-            doc.head.appendChild(style);
-        }
+            btn.querySelectorAll('svg, span').forEach(el => {
+                el.style.setProperty('visibility', 'hidden', 'important');
+                el.style.setProperty('font-size', '0px', 'important');
+                el.style.setProperty('width', '0', 'important');
+                el.style.setProperty('height', '0', 'important');
+                el.style.setProperty('overflow', 'hidden', 'important');
+            });
+        });
+
+        if (observer) observer.observe(doc.body, { childList: true, subtree: true });
     }
 
     function injectHamburger() {
@@ -307,18 +302,50 @@ components.html("""
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const sb = getSidebarBtn();
-            if (sb) sb.click();
+            if (sb) {
+                sb.click();
+                setTimeout(hideOriginalBtnText, 10);
+                setTimeout(hideOriginalBtnText, 150);
+                setTimeout(hideOriginalBtnText, 400);
+            }
         });
+
+        // Opaque cover positioned over the native button area
+        const cover = doc.createElement('div');
+        cover.id = 'sidebar-btn-cover';
+        cover.style.cssText = `
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 16rem;
+            height: 3rem;
+            background: #13111a;
+            z-index: 999998;
+            pointer-events: none;
+        `;
+        const mqCover = window.parent.matchMedia('(max-width: 767px)');
+        const toggleCover = (e) => {
+            cover.style.display = e.matches ? 'block' : 'none';
+        };
+        toggleCover(mqCover);
+        mqCover.addEventListener('change', toggleCover);
+        doc.body.appendChild(cover);
 
         doc.body.appendChild(btn);
     }
 
     injectHamburger();
-    [100, 300, 600, 1000].forEach(ms => setTimeout(injectHamburger, ms));
+    [50, 200, 500, 1000, 2000].forEach(ms => setTimeout(injectHamburger, ms));
 
-    new MutationObserver(() => {
-        hideOriginalBtnText();
-    }).observe(doc.body, { childList: true, subtree: true });
+    observer = new MutationObserver(() => hideOriginalBtnText());
+    observer.observe(doc.body, { childList: true, subtree: true });
+
+    setInterval(() => {
+        if (window.parent.matchMedia('(max-width: 767px)').matches) {
+            hideOriginalBtnText();
+        }
+    }, 1500);
 })();
 </script>
 """, height=0)
