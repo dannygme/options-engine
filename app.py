@@ -13,7 +13,7 @@ from src.metrics import (
 )
 
 st.set_page_config(
-    page_title="Options Engine",
+    page_title="AMM Options Engine",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -97,8 +97,50 @@ p, span, div, label { color: #b8afd4 !important; }
 
 hr { border: none !important; border-top: 1px solid #2d2640 !important; margin: 1.5rem 0 !important; }
 
-[data-testid="stDataFrame"] > div { background: #1a1727 !important; border: 1px solid #2d2640 !important; border-radius: 16px !important; overflow: hidden !important; }
+[data-testid="stDataFrame"] > div,
+[data-testid="stDataFrameResizable"],
+.dvn-scroller,
+[data-testid="data-grid-canvas"],
+.gdg-style,
+[class*="dvn-"] {
+    background: #1a1727 !important;
+    color: #ede9f6 !important;
+    border-color: #2d2640 !important;
+}
 
+table.sim-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    color: #ede9f6;
+}
+table.sim-log-table th {
+    background: #13111a;
+    color: #6b5f8a;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid #2d2640;
+    text-align: left;
+}
+table.sim-log-table td {
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid #1e1e2e;
+    color: #ede9f6;
+    font-variant-numeric: tabular-nums;
+}
+table.sim-log-table tr:hover td { background: #1e1e2e; }
+
+[data-testid="stExpander"] details[open] > summary {
+    background: #1a1727 !important;
+    border-bottom: 1px solid #2d2640 !important;
+}
+[data-testid="stExpander"] details[open] {
+    background: #1a1727 !important;
+}
+
+[data-testid="stExpander"] [data-testid="stIconMaterial"] { display: none !important; }
 [data-testid="stExpander"] {
     background: #1a1727 !important;
     border: 1px solid #2d2640 !important;
@@ -106,7 +148,11 @@ hr { border: none !important; border-top: 1px solid #2d2640 !important; margin: 
     box-shadow: 0 0 12px rgba(108,99,255,0.06) !important;
 }
 [data-testid="stExpander"] summary { color: #b8afd4 !important; }
-[data-testid="stExpander"] summary p { color: #b8afd4 !important; font-size: 0.875rem !important; }
+[data-testid="stExpander"] summary p { 
+    color: #ede9f6 !important; 
+    font-size: 0.95rem !important; 
+    font-weight: 600 !important;
+}
 [data-testid="stExpander"] summary svg { display: none !important; }
 [data-testid="stExpander"] details[open] summary::before { content: "↑ "; color: #6b5f8a; font-size: 0.85rem; font-family: sans-serif !important; }
 [data-testid="stExpander"] summary::before { content: "↓ "; color: #6b5f8a; font-size: 0.85rem; font-family: sans-serif !important; }
@@ -114,7 +160,17 @@ hr { border: none !important; border-top: 1px solid #2d2640 !important; margin: 
 [data-testid="stAlert"] { background: #1a1727 !important; border: 1px solid #2d2640 !important; border-radius: 16px !important; }
 [data-testid="stAlert"] p { color: #b8afd4 !important; }
 
-.opt-wrap { flex: 1; display: flex; flex-direction: column; box-shadow: 0 0 12px rgba(108,99,255,0.06) !important; }
+[data-testid="column"] > div > div > div:has(.opt-wrap) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.opt-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 12px rgba(108,99,255,0.06) !important;
+}
 
 .stApp::before {
     content: "";
@@ -169,7 +225,7 @@ components.html("""
             || doc.querySelector('[data-testid="collapsedControl"] button');
     }
 
-    function hideOriginalBtn() {
+    function hideOriginalBtnText() {
         const style = doc.getElementById('hamburger-style') || doc.createElement('style');
         style.id = 'hamburger-style';
         style.textContent = `
@@ -181,6 +237,16 @@ components.html("""
             [data-testid="collapsedControl"] button svg,
             [data-testid="stSidebarCollapseButton"] button svg {
                 visibility: hidden !important;
+            }
+            [data-testid="collapsedControl"] button::before,
+            [data-testid="collapsedControl"] button span,
+            [data-testid="collapsedControl"] button[data-testid="stIconMaterial"] {
+                visibility: hidden !important;
+                opacity: 0 !important;
+                font-size: 0 !important;
+                width: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
             }
             @media (max-width: 767px) {
                 [data-testid="collapsedControl"] button,
@@ -204,7 +270,7 @@ components.html("""
     }
 
     function injectHamburger() {
-        hideOriginalBtn();
+        hideOriginalBtnText();
         if (doc.getElementById('custom-hamburger')) return;
 
         const btn = doc.createElement('button');
@@ -248,7 +314,11 @@ components.html("""
     }
 
     injectHamburger();
-    [200, 500, 1000].forEach(ms => setTimeout(injectHamburger, ms));
+    [100, 300, 600, 1000].forEach(ms => setTimeout(injectHamburger, ms));
+
+    new MutationObserver(() => {
+        hideOriginalBtnText();
+    }).observe(doc.body, { childList: true, subtree: true });
 })();
 </script>
 """, height=0)
@@ -320,7 +390,7 @@ with col_header:
       <p style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.14em;
                 color:#fc72ff !important;margin:0 0 0.35rem;">Research Prototype</p>
       <h1 style="font-size:1.9rem;margin:0 0 0.35rem;" class="title-gradient">
-        Oracle-Free Options Engine
+        AMM Options Engine
       </h1>
       <p style="font-size:0.875rem;color:#6b5f8a !important;margin:0;">
         AMM-derived pricing. No external oracles. Adversarial simulation.
@@ -477,13 +547,11 @@ if st.session_state.has_run and st.session_state.results:
             st.markdown(fmt_table(pricing), unsafe_allow_html=True)
 
     st.divider()
-    st.markdown(
-        '<p style="font-size:0.8rem;font-weight:600;color:#ede9f6 !important;'
-        'margin:0 0 0.4rem;">Raw Simulation Log</p>',
-        unsafe_allow_html=True,
-    )
-    with st.expander("", expanded=False):
-        st.dataframe(df, use_container_width=True, hide_index=True)
+    with st.expander("Raw Simulation Log", expanded=False):
+        st.markdown(
+            df.to_html(index=False, classes="sim-log-table"),
+            unsafe_allow_html=True,
+        )
 
 else:
     st.markdown("""
