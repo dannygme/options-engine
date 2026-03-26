@@ -547,29 +547,31 @@ if st.session_state.has_run and st.session_state.results:
     st.pyplot(fig2, use_container_width=True)
 
     section("Detail")
-    ca, cb = st.columns(2)
-    with ca:
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
         card_header("Attack Summary")
         if exploit.get("attack_occurred"):
             display = {k: v for k, v in exploit.items() if k != "attack_occurred"}
             st.markdown(fmt_table(display), unsafe_allow_html=True)
         else:
             st.info("No attack run.")
-    with cb:
+    
+    with col2:
         card_header("Market Stability")
         st.markdown(fmt_table(stability), unsafe_allow_html=True)
-
-    if r["attacker_option"] is not None:
-        opt = r["attacker_option"]
-        pricing = compute_pricing_error(
-            simulated_payoff=opt.payoff,
-            strike=opt.strike,
-            entry_spot=r["entry_spot"],
-            sigma=0.3,
-            steps_to_expiry=r["option_expiry_offset"],
-        )
-        cp, _ = st.columns(2)
-        with cp:
+        
+        if r["attacker_option"] is not None:
+            opt = r["attacker_option"]
+            pricing = compute_pricing_error(
+                simulated_payoff=opt.payoff,
+                strike=opt.strike,
+                entry_spot=r["entry_spot"],
+                sigma=0.3,
+                steps_to_expiry=r["option_expiry_offset"],
+            )
+            st.markdown('<div style="margin-top: 1.25rem;"></div>', unsafe_allow_html=True)
             card_header("Pricing Error vs Black-Scholes")
             st.markdown(fmt_table(pricing), unsafe_allow_html=True)
 
