@@ -17,7 +17,7 @@ class SimulationConfig:
         fee_rate: float = 0.003,
         twap_window: int = 20,
         n_traders: int = 5,
-        trader_vol: float = 0.02,
+        trader_vol: float = 0.001,
         attack_step: int = 50,
         attack_size_y: float = 200_000.0,
         option_strike_offset: float = 0.05,
@@ -90,20 +90,32 @@ class Simulation:
         return self.amm.state.reserve_y + self.amm.state.reserve_x * self.amm.spot_price
 
     def _trader_step(self) -> None:
+        max_swap_y = self.amm.state.reserve_y * 0.002
+        max_swap_x = self.amm.state.reserve_x * 0.002
         for _ in range(self.cfg.n_traders):
-            size = abs(self.rng.normal(0, self.cfg.trader_vol) * self.amm.state.reserve_y * 0.01)
+            size_y = min(
+                abs(self.rng.normal(0, self.cfg.trader_vol) * self.amm.state.reserve_y),
+                max_swap_y
+            )
             direction = self.rng.choice(["buy", "sell"])
             try:
                 if direction == "buy":
-                    self.amm.swap_y_for_x(max(size, 1.0))
+                    self.amm.swap_y_for_x(max(size_y, 1.0))
                 else:
-                    self.amm.swap_x_for_y(max(size * self.amm.spot_price, 0.01))
+                    size_x = min(
+                        abs(self.rng.normal(0, self.cfg.trader_vol) * self.amm.state.reserve_x),
+                        max_swap_x
+                    )
+                    self.amm.swap_x_for_y(max(size_x, 0.001))
             except AssertionError:
                 pass
 
     def run(self) -> pd.DataFrame:
         pre_position_step = max(1, self.cfg.attack_step - 15)
         pre_positioned = False
+
+        # Record true initial price before any trading
+        self.amm.record_price(0)
 
         for step in range(self.cfg.n_steps):
 
@@ -123,6 +135,16 @@ class Simulation:
 
             if self.attacker and step == self.attacker.attack_step + 2:
                 self.attack_reversal_y = self.attacker.reverse_attack(self.amm, step)
+                if self.attacker.result is None and pre_positioned:
+                    twap_settlement = self.twap.compute(self.amm.state.price_history, step - 1)
+                    option_payoff = self.attacker.option.payoff if self.attacker.option else 0.0
+                    self.attacker.compute_profit(
+                        option_payoff,
+                        self.attack_swap_cost_y,
+                        self.attack_reversal_y,
+                        twap_settlement,
+                        step,
+                    )
 
             self._trader_step()
 

@@ -25,6 +25,7 @@ class Option:
     premium: float
     buyer: str
     writer: str
+    notional: float = 1.0
     status: OptionStatus = OptionStatus.OPEN
     settlement_price: Optional[float] = None
     payoff: float = 0.0
@@ -49,6 +50,7 @@ class OptionsEngine:
 
     def open_option(self, option_type: OptionType, strike: float, expiry_step: int,
                     collateral: float, premium: float, buyer: str, writer: str) -> Option:
+        notional = collateral / strike if strike > 0 else 1.0
         opt = Option(
             option_id=self._next_option_id(),
             option_type=option_type,
@@ -58,6 +60,7 @@ class OptionsEngine:
             premium=premium,
             buyer=buyer,
             writer=writer,
+            notional=notional,
         )
         self.options.append(opt)
         return opt
@@ -66,10 +69,10 @@ class OptionsEngine:
         assert option.status == OptionStatus.EXPIRED
         option.settlement_price = settlement_twap
         if option.option_type == OptionType.CALL:
-            payoff = max(0.0, settlement_twap - option.strike)
+            raw_payoff = max(0.0, settlement_twap - option.strike)
         else:
-            payoff = max(0.0, option.strike - settlement_twap)
-        payoff = min(payoff, option.collateral)
+            raw_payoff = max(0.0, option.strike - settlement_twap)
+        payoff = min(raw_payoff * option.notional, option.collateral)
         option.payoff = payoff
         option.status = OptionStatus.SETTLED
         return payoff

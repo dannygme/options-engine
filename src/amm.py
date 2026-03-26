@@ -43,9 +43,9 @@ class AMM:
         new_y = self._k / new_x
         dy = self.state.reserve_y - new_y
         assert dy > 0
-        self.state.reserve_x += dx
+        self.state.reserve_x += dx_after_fee
         self.state.reserve_y -= dy
-        self.state.fee_accumulated += fee * self.spot_price
+        self.state.fee_accumulated += fee
         self._k = self.state.reserve_x * self.state.reserve_y
         return dy
 

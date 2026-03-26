@@ -25,6 +25,7 @@ defaults = {
     "twap_window": 2,
     "initial_price": 500,
     "attack_size": 50_000,
+    "trader_vol": 0.001,
     "run_attack": True,
     "seed": 42,
     "run_btn": False,
@@ -319,7 +320,7 @@ with col_header:
       <p style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.14em;
                 color:#fc72ff !important;margin:0 0 0.35rem;">Research Prototype</p>
       <h1 style="font-size:1.9rem;margin:0 0 0.35rem;" class="title-gradient">
-        AMM Options Engine
+        Oracle-Free Options Engine
       </h1>
       <p style="font-size:0.875rem;color:#6b5f8a !important;margin:0;">
         AMM-derived pricing. No external oracles. Adversarial simulation.
@@ -342,8 +343,11 @@ with st.sidebar:
             "Initial spot price (Y per X)", 100, 10_000,
             st.session_state.initial_price, step=50)
         st.session_state.attack_size = st.number_input(
-            "Attack size (Y)", 10_000, 1_000_000,
+            "Attack size / option collateral (Y)", 10_000, 1_000_000,
             st.session_state.attack_size, step=10_000)
+        st.session_state.trader_vol = st.number_input(
+            "Trader volatility", 0.0001, 0.01,
+            st.session_state.trader_vol, step=0.0001, format="%.4f")
         st.session_state.run_attack = st.toggle(
             "Adversarial attack", value=st.session_state.run_attack)
         st.session_state.seed = st.number_input(
@@ -359,6 +363,7 @@ if st.session_state.run_btn:
     _n_steps       = int(st.session_state.n_steps)
     _twap_window   = int(st.session_state.twap_window)
     _attack_size   = float(st.session_state.attack_size)
+    _trader_vol    = float(st.session_state.trader_vol)
     _run_attack    = bool(st.session_state.run_attack)
     _seed          = int(st.session_state.seed)
 
@@ -373,6 +378,7 @@ if st.session_state.run_btn:
         twap_window=_twap_window,
         attack_size_y=_attack_size,
         run_attack=_run_attack,
+        trader_vol=_trader_vol,
     )
 
     with st.spinner("Running..."):
